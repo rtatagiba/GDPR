@@ -2,6 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as process from "node:process";
+import * as readline from "node:readline";
 import { DEFAULT_CSS } from "./templates/cssTemplate.js";
 
 const CWD = process.cwd();
@@ -81,17 +82,22 @@ function ensureCssFile(dryRun = false): string {
   return cssFile;
 }
 
-function buildIntegrationBlock(): string {
+function buildIntegrationBlock(
+  siteName: string,
+  cookiePolicyUrl: string,
+  privacyPolicyUrl: string
+): string {
+  const headline = `Manage cookie preferences for ${siteName}`;
   return `    // astro-consent:start
     astroConsent({
-      siteName: "My Website",
-      headline: "Manage cookie preferences for My Website",
+      siteName: ${JSON.stringify(siteName)},
+      headline: ${JSON.stringify(headline)},
       description: "We use cookies to improve site performance, measure traffic, and support marketing.",
       acceptLabel: "Accept all",
       rejectLabel: "Reject all",
       manageLabel: "Manage preferences",
-      cookiePolicyUrl: "/cookie-policy",
-      privacyPolicyUrl: "/privacy",
+      cookiePolicyUrl: ${JSON.stringify(cookiePolicyUrl)},
+      privacyPolicyUrl: ${JSON.stringify(privacyPolicyUrl)},
       displayUntilIdle: true,
       displayIdleDelayMs: 1000,
       consent: {
@@ -101,6 +107,18 @@ function buildIntegrationBlock(): string {
     }),
     // astro-consent:end
 `;
+}
+
+function askQuestion(question: string, defaultValue: string): Promise<string> {
+  if (!process.stdin.isTTY || isDryRun || isJson) return Promise.resolve(defaultValue);
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => {
+    rl.question(`${question} [${defaultValue}]: `, answer => {
+      rl.close();
+      resolve(answer.trim() || defaultValue);
+    });
+  });
 }
 
 function removeIntegrationBlock(source: string): string {
@@ -362,30 +380,46 @@ if (command !== "init" && command !== "install") {
    Inject Astro integration
 ───────────────────────────────────── */
 
-const { configPath, source: original } = readConfig();
-let source = original;
+(async () => {
+  const { configPath, source: original } = readConfig();
+  let source = original;
 
-ensureCssFile(isDryRun);
+  ensureCssFile(isDryRun);
 
-if (!source.includes(`from "astro-consent"`)) {
-  source = `import astroConsent from "astro-consent";\n${source}`;
-}
+  const alreadyInstalled = source.includes("astro-consent:start");
 
-if (!source.includes("astro-consent:start")) {
-  source = source.replace(
-    /integrations\s*:\s*\[/,
-    match => `${match}\n${buildIntegrationBlock()}`
+  let siteName = "My Website";
+  let cookiePolicyUrl = "/cookie-policy";
+  let privacyPolicyUrl = "/privacy";
+
+  if (!alreadyInstalled) {
+    console.log("\n📋 astro-consent setup — press Enter to keep the default\n");
+    siteName = await askQuestion("Site name", "My Website");
+    cookiePolicyUrl = await askQuestion("Cookie Policy URL", "/cookie-policy");
+    privacyPolicyUrl = await askQuestion("Privacy Policy URL", "/privacy");
+    console.log("");
+  }
+
+  if (!source.includes(`from "astro-consent"`)) {
+    source = `import astroConsent from "astro-consent";\n${source}`;
+  }
+
+  if (!alreadyInstalled) {
+    source = source.replace(
+      /integrations\s*:\s*\[/,
+      match => `${match}\n${buildIntegrationBlock(siteName, cookiePolicyUrl, privacyPolicyUrl)}`
+    );
+  }
+
+  if (!isDryRun) {
+    fs.writeFileSync(configPath, source, "utf8");
+  }
+
+  console.log(
+    isDryRun
+      ? "\n🧪 Dry run: astro-consent would be installed successfully"
+      : "\n🎉 astro-consent installed successfully"
   );
-}
-
-if (!isDryRun) {
-  fs.writeFileSync(configPath, source, "utf8");
-}
-
-console.log(
-  isDryRun
-    ? "\n🧪 Dry run: astro-consent would be installed successfully"
-    : "\n🎉 astro-consent installed successfully"
-);
-console.log("👉 Edit src/cookiebanner/styles.css to theme the banner and modal.");
-console.log("👉 Run `astro-consent remove` to uninstall\n");
+  console.log("👉 Edit src/cookiebanner/styles.css to theme the banner and modal.");
+  console.log("👉 Run `astro-consent remove` to uninstall\n");
+})();
