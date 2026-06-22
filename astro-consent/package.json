@@ -1,0 +1,63 @@
+{
+  "name": "astro-consent",
+  "version": "2.0.0",
+  "description": "A privacy-first, GDPR-compliant cookie consent banner for Astro with a built-in preferences modal, zero dependencies, and full theme control.",
+  "type": "module",
+  "author": {
+    "name": "Velohost UK Limited",
+    "url": "https://velohost.co.uk"
+  },
+  "license": "MIT",
+  "homepage": "https://velohost.co.uk/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/velohost/astro-consent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/velohost/astro-consent/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "astro-consent": "dist/cli.cjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cli.json && node -e \"const fs=require('fs');const path=require('path');fs.renameSync('dist/cli.js','dist/cli.cjs');fs.renameSync('dist/templates/cssTemplate.js','dist/templates/cssTemplate.cjs');let s=fs.readFileSync('dist/cli.cjs','utf8');s=s.replace('./templates/cssTemplate.js','./templates/cssTemplate.cjs');fs.writeFileSync('dist/cli.cjs',s);fs.chmodSync('dist/cli.cjs',0o755);\""
+  },
+  "keywords": [
+    "astro",
+    "astro-integration",
+    "cookie-banner",
+    "cookie-consent",
+    "gdpr",
+    "privacy",
+    "analytics-consent",
+    "marketing-consent",
+    "withastro",
+    "velohost-uk-limited"
+  ],
+  "peerDependencies": {
+    "astro": "^4.0.0 || ^5.0.0 || ^6.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^25.2.1",
+    "astro": "^6.0.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
